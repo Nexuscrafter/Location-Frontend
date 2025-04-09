@@ -1,9 +1,11 @@
-import { useEffect, useState } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, Platform } from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity, Platform, Alert } from 'react-native';
 import * as Location from 'expo-location';
 import * as TaskManager from 'expo-task-manager';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Play, Square } from 'lucide-react-native';
+import * as IntentLauncher from 'expo-intent-launcher';
 import { api } from '@/services/api';
+import { useEffect, useState } from 'react';
 
 const LOCATION_TASK_NAME = 'background-location-task';
 
@@ -42,8 +44,33 @@ export default function TrackingScreen() {
         const { status: backgroundStatus } = await Location.requestBackgroundPermissionsAsync();
         if (backgroundStatus !== 'granted') {
           setErrorMsg('Background location permission denied');
+          return;
         }
+
+        // Prompt the user to disable battery optimization
+        Alert.alert(
+          'Disable Battery Optimization',
+          'To ensure reliable background location tracking, please disable battery optimization for this app.',
+          [
+            {
+              text: 'Open Settings',
+              onPress: () =>
+                IntentLauncher.startActivityAsync(
+                  IntentLauncher.ActivityAction.IGNORE_BATTERY_OPTIMIZATION_SETTINGS
+                ),
+            },
+            { text: 'Cancel', style: 'cancel' },
+          ]
+        );
       }
+    })();
+  }, []);
+
+  useEffect(() => {
+    (async () => {
+      const started = await Location.hasStartedLocationUpdatesAsync(LOCATION_TASK_NAME);
+      const stored = await AsyncStorage.getItem('isTracking');
+      setIsTracking(started && stored === 'true');
     })();
   }, []);
 
@@ -52,7 +79,7 @@ export default function TrackingScreen() {
       const hasStarted = await Location.hasStartedLocationUpdatesAsync(LOCATION_TASK_NAME);
       if (!hasStarted) {
         await Location.startLocationUpdatesAsync(LOCATION_TASK_NAME, {
-          accuracy: Location.Accuracy.High,
+          accuracy: Location.Accuracy.Balanced,
           timeInterval: 900000, // 15 minutes
           distanceInterval: 0,
           showsBackgroundLocationIndicator: true,
@@ -62,6 +89,7 @@ export default function TrackingScreen() {
           },
         });
       }
+      await AsyncStorage.setItem('isTracking', 'true');
       setIsTracking(true);
     } catch (err) {
       console.error('Could not start location tracking', err);
@@ -72,6 +100,7 @@ export default function TrackingScreen() {
   const stopLocationTracking = async () => {
     try {
       await Location.stopLocationUpdatesAsync(LOCATION_TASK_NAME);
+      await AsyncStorage.setItem('isTracking', 'false');
       setIsTracking(false);
     } catch (err) {
       console.error('Could not stop location tracking', err);
@@ -125,4 +154,4 @@ const styles = StyleSheet.create({
   stopButton: { backgroundColor: '#F44336' },
   buttonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
   errorText: { color: '#F44336', textAlign: 'center', fontSize: 16 },
-});
+})

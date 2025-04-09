@@ -37,7 +37,7 @@ export const auth = {
 
     // Extract the token from the Authorization header if available.
     const authHeader = response.headers.get('Authorization');
-    if (authHeader && authHeader.startsWith('Bearer ')) {
+    if (authHeader && authHeader.startsWith('Bearer')) {
       const token = authHeader.substring(7); // Remove the "Bearer " prefix.
       await this.private.setToken(token);
     }
@@ -68,8 +68,8 @@ export const auth = {
       await this.private.setToken(token);
     } else {
       // Fallback: if your API sends the token in the body, you can extract it like this:
-      const { token } = await response.json();
-      await this.private.setToken(token);
+      const { jwt } = await response.json();
+      await this.private.setToken(jwt);
     }
   },
 

@@ -1,7 +1,7 @@
-import { useCallback, useState } from 'react';
+import { useState } from 'react';
 import { StyleSheet, View, Text, TouchableOpacity, ActivityIndicator, TextInput } from 'react-native';
-import { useRouter, Link } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
+import { useRouter } from 'expo-router';
 import { Play } from 'lucide-react-native';
 import { auth } from '@/services/auth';
 
@@ -28,45 +28,30 @@ export default function Login() {
     }
   };
 
-  const handleGoogleSignIn = useCallback(async () => {
+  const handleGoogleSignIn = async () => {
     try {
-      setIsLoading(true);
-      setError(null);
-      
-      const response = await fetch('/api/auth/google/url');
-      const { url } = await response.json();
-      
-      const result = await WebBrowser.openAuthSessionAsync(url, 'myapp://');
-      
-      if (result.type === 'success') {
-        const { url: callbackUrl } = result;
-        const code = new URL(callbackUrl).searchParams.get('code');
-        
-        if (code) {
-          const tokenResponse = await fetch('/api/auth/google/callback', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ code }),
-          });
-          
-          if (tokenResponse.ok) {
-            const { token } = await tokenResponse.json();
-            await auth.private.setToken(token);
-            router.replace('/(tabs)');
-          } else {
-            throw new Error('Failed to authenticate');
-          }
+        setIsLoading(true);
+        setError(null);
+
+        const authUrl = 'http://192.168.0.102:5454/auth/login/google'; // Replace with your backend endpoint
+        const result = await WebBrowser.openAuthSessionAsync(authUrl);
+
+        if (result.type !== 'success') {
+            throw new Error('Failed to authenticate with Google');
         }
-      }
+
+        // Directly destructure the JWT token from the response object
+        const { jwt } = await fetch(result.url).then(res => res.json());
+        await auth.private.setToken(jwt);
+
+        router.replace('/(tabs)');
     } catch (err) {
-      setError('Authentication failed. Please try again.');
-      console.error(err);
+        setError('Authentication failed. Please try again.');
+        console.error(err);
     } finally {
-      setIsLoading(false);
+        setIsLoading(false);
     }
-  }, [router]);
+};
 
   return (
     <View style={styles.container}>
@@ -74,7 +59,7 @@ export default function Login() {
         <Play size={64} color="#4285F4" style={styles.icon} />
         <Text style={styles.title}>Location Tracker</Text>
         <Text style={styles.subtitle}>Track your location seamlessly</Text>
-        
+
         {error && (
           <Text style={styles.errorText}>{error}</Text>
         )}
@@ -96,8 +81,8 @@ export default function Login() {
             secureTextEntry
             editable={!isLoading}
           />
-          <TouchableOpacity 
-            style={[styles.button, isLoading && styles.buttonDisabled]} 
+          <TouchableOpacity
+            style={[styles.button, isLoading && styles.buttonDisabled]}
             onPress={handleCredentialsLogin}
             disabled={isLoading || !email || !password}
           >
@@ -111,11 +96,9 @@ export default function Login() {
 
         <View style={styles.footer}>
           <Text style={styles.footerText}>Don't have an account?</Text>
-          <Link href="/auth/signup" asChild>
-            <TouchableOpacity>
-              <Text style={styles.linkText}>Sign up</Text>
-            </TouchableOpacity>
-          </Link>
+          <TouchableOpacity onPress={() => router.push('/auth/signup')}>
+            <Text style={styles.linkText}>Sign up</Text>
+          </TouchableOpacity>
         </View>
 
         <View style={styles.divider}>
@@ -123,9 +106,9 @@ export default function Login() {
           <Text style={styles.dividerText}>OR</Text>
           <View style={styles.dividerLine} />
         </View>
-        
-        <TouchableOpacity 
-          style={[styles.googleButton, isLoading && styles.buttonDisabled]} 
+
+        <TouchableOpacity
+          style={[styles.googleButton, isLoading && styles.buttonDisabled]}
           onPress={handleGoogleSignIn}
           disabled={isLoading}
         >

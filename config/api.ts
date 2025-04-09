@@ -9,8 +9,8 @@ const getBaseUrl = (): string => {
       auth: {
         login: '/auth/signin',
         signup: '/auth/signup',
-        googleUrl: '/auth/google/url',
-        googleCallback: '/auth/google/callback',
+        googleUrl: '/login/google',
+        
       },
       locations: '/api/location/create', // Ensure this matches your Spring Boot controller endpoint
     },

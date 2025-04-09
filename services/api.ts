@@ -2,10 +2,19 @@ import { LocationObject } from 'expo-location';
 import { auth } from './auth';
 import { API_CONFIG } from '@/config/api';
 
+
 interface LocationUpdate {
   latitude: number;
   longitude: number;
   timestamp: string;
+}
+
+export interface UserProfile {
+  id: string;
+  email: string;
+  fullName: string | null;
+  phoneNumber: string | null;
+  address: string | null;
 }
 
 export const api = {
@@ -39,6 +48,29 @@ export const api = {
         console.error('Error updating location:', error);
         throw error;
       }
+    },
+  },
+  profile: {
+    async get(): Promise<UserProfile> {
+      const token = await auth.getToken();
+      if (!token) {
+        throw new Error('Not authenticated');
+      }
+
+      const response = await fetch(`${API_CONFIG.baseUrl}/api/user/user-profile`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+       
+        throw new Error('Failed to fetch profile');
+        
+      }
+     
+
+      return response.json();
     },
   },
 };
